@@ -5,13 +5,11 @@ import lightning as pl
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
-model_name = "google/bert_uncased_L-2_H-128_A-2"
-batch_size = 32
 test_size_split = 0.2
 random_state_val = 42
 
 class DataModule(pl.LightningDataModule):
-    def __init__(self, model_name=model_name, batch_size=batch_size):
+    def __init__(self, model_name="google/bert_uncased_L-2_H-128_A-2", batch_size=32):
         super().__init__
 
         self.batch_size = batch_size
