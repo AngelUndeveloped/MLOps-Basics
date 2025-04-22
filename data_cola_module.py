@@ -11,7 +11,7 @@ Attributes:
     batch_size (int): Number of samples per batch. Defaults to 32.
 """
 
-# import torch
+import torch
 # import datasets
 import lightning as L
 
@@ -50,6 +50,8 @@ class ColaDataModule(L.LightningDataModule):
         super().__init__()
         self.batch_size = batch_size
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.train_data = None
+        self.val_data = None
 
     def prepare_data(self):
         """
@@ -65,7 +67,6 @@ class ColaDataModule(L.LightningDataModule):
         cola_dataset = load_dataset("glue", "cola")
         self.train_data = cola_dataset["train"]
         self.val_data = cola_dataset["validation"]
-        self.test_data = cola_dataset["test"]
 
     def tokenize_data(self, example):
         """
@@ -87,6 +88,17 @@ class ColaDataModule(L.LightningDataModule):
         )
 
     def setup(self, stage=None):
+        """
+        Set up the dataset for training, validation, and testing.
+
+        This method is called after prepare_data and is used to prepare the data
+        for each stage of training. It tokenizes the data and sets the format to
+        PyTorch tensors.
+
+        Args:
+            stage (str, optional): The stage of training. Can be "fit", "test", or None.
+                Defaults to None.
+        """
         if stage == "fit" or stage is None:
             self.train_data = self.train_data.map(self.tokenize_data, batched=True)
             self.train_data.set_format(
@@ -99,8 +111,31 @@ class ColaDataModule(L.LightningDataModule):
                 type="torch",
                 columns=["input_ids", "attention_mask", "label"],
             )
-    
-    def train_dataLoader(self):
+
+    def train_data_loader(self):
+        """
+        Create and return the training data loader.
+
+        Returns:
+            torch.utils.data.DataLoader: A DataLoader instance for the training data
+                with the specified batch size and shuffling enabled.
+        """
         return torch.utils.data.DataLoader(
-            
+            self.train_data,
+            batch_size=self.batch_size,
+            shuffle=True,
+        )
+
+    def val_data_loader(self):
+        """
+        Create and return the validation data loader.
+
+        Returns:
+            torch.utils.data.DataLoader: A DataLoader instance for the validation data
+                with the specified batch size and shuffling disabled.
+        """
+        return torch.utils.data.DataLoader(
+            self.val_data,
+            batch_size=self.batch_size,
+            shuffle=False,
         )
