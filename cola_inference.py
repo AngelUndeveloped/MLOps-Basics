@@ -29,3 +29,11 @@ class cola_predictor:
         for score, label in zip(scores, self.labels):
             predictions.append({"lable":label, "score":score})
         return predictions
+    
+if __name__== "__main__":
+    sentence = "The movie was good."
+    predictor = cola_predictor(
+        model_path = "models/cola_model.pth"
+    )
+    predictions = predictor.predict(sentence)
+    print(predictions)
