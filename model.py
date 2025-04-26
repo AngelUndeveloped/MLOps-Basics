@@ -29,7 +29,7 @@ class cola_model(L.LightningModule):
         num_classes (int): Number of output classes (2 for binary classification)
     """
     
-    def __init__(self, model_name="google/bert_uncased_L-2_H-128_A-2", lr=2e-5):
+    def __init__(self, model_name="google/bert_uncased_L-2_H-128_A-2", lr=3e-5):
         """
         Initialize the CoLA model.
         
@@ -39,21 +39,22 @@ class cola_model(L.LightningModule):
             lr (float, optional): Learning rate for model training. Defaults to 2e-5,
                 which is a common learning rate for fine-tuning transformer models.
         """
-        # Initialize the parent LightningModule class
         super(cola_model, self).__init__()
-
-        # Save all hyperparameters for logging and checkpointing
         self.save_hyperparameters()
-
-        # Load the pre-trained BERT model
         self.bert = AutoModel.from_pretrained(model_name)
-
-        # Add a linear classification layer on top of BERT
-        # Input size is BERT's hidden size, output size is 2 for binary classification
         self.w = nn.Linear(self.bert.config.hidden_size, 2)
-
-        # Set number of classes for the classification task
         self.num_classes = 2
+        self.train_accuracy_metric = torchmetrics.Accuracy()
+        self.val_accuracy_metric = torchmetrics.Accuracy()
+        self.f1_metric = torchmetrics.F1(num_classes=self.num_classes)
+        self.precision_macro_metric = torchmetrics.Precision(
+            average="macro", num_classes=self.num_classes
+        )
+        self.recall_macro_metric = torchmetrics.Recall(
+            average="macro", num_classes=self.num_classes
+        )
+        self.precision_micro_metric = torchmetrics.Precision(average="micro")
+        self.recall_micro_metric = torchmetrics.Recall(average="micro")
 
     def forward(self, input_ids, attention_mask):
         """
