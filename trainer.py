@@ -7,7 +7,7 @@ from lightning.callbacks.early_stopping import EarlyStopping
 from lightning.loggers import wandbLogger
 
 from data import data_module
-from cola_lightning_model import cola_model
+from model import cola_model
 
 wandb_logger = WandbLogger(project="MLOps-Basics")
 
