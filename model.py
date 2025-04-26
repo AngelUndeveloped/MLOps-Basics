@@ -2,8 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import lightning as L
-from transformers import AutoModel
-from sklearn.metrics import accuracy_score
+from transformers import AutoModelForSequenceClassification
+import torchmetrics
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 
 class cola_model(L.LightningModule):
     """
