@@ -18,7 +18,7 @@ import lightning as L
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
-class ColaDataModule(L.LightningDataModule):
+class data_module(L.LightningDataModule):
     """
     A LightningDataModule for handling the CoLA dataset.
 
@@ -40,7 +40,7 @@ class ColaDataModule(L.LightningDataModule):
     """
     def __init__(self, model_name: str = "google/bert_uncased_L-2_H-128_A-2", batch_size: int = 32):
         """
-        Initialize the ColaDataModule.
+        Initialize the data_module.
 
         Args:
             model_name (str): Name of the pre-trained model to use for tokenization.
@@ -141,7 +141,7 @@ class ColaDataModule(L.LightningDataModule):
         )
 
 if __name__=="__main__":
-    data_model = ColaDataModule()
+    data_model = data_module()
     data_model.prepare_data()
     data_model.setup()
     print(next(iter(data_model.train_data_loader())))

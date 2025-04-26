@@ -6,13 +6,13 @@ from lightning.callbacks import ModelCheckpoint
 from lightning.callbacks.early_stopping import EarlyStopping
 from lightning.loggers import wandbLogger
 
-from data_cola_module import ColaDataModule
+from data import data_module
 from cola_lightning_model import cola_model
 
 wandb_logger = WandbLogger(project="MLOps-Basics")
 
 def main():
-    cola_data = ColaDataModule()
+    cola_data = data_module()
     cola_model = cola_model()
 
     checkpoint_callback = ModelCheckpoint(
