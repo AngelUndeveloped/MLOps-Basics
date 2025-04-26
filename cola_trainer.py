@@ -1,10 +1,15 @@
+import torch
+import wandb
+import pandas as pd
+import lightning as L
+from lightning.callbacks import ModelCheckpoint
+from lightning.callbacks.early_stopping import EarlyStopping
+from lightning.loggers import wandbLogger
+
 from data_cola_module import ColaDataModule
 from cola_lightning_model import cola_model
 
-import lightning as L
-import torch
-from lightning.callbacks import ModelCheckpoint
-from lightning.callbacks.early_stopping import EarlyStopping
+wandb_logger = WandbLogger(project="MLOps-Basics")
 
 def main():
     cola_data = ColaDataModule()

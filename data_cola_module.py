@@ -139,3 +139,10 @@ class ColaDataModule(L.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
         )
+
+if __name__=="__main__":
+    data_model = ColaDataModule()
+    data_model.prepare_data()
+    data_model.setup()
+    print(next(iter(data_model.train_data_loader())))
+    ["input_ids"].shape()
