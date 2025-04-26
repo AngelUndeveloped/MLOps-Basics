@@ -1,6 +1,6 @@
 import torch
 from cola_lightning_model import cola_model
-from data_cola_module import ColaDataModule
+from data import data_module
 
 class cola_predictor:
     def __init__(self, model_path):
@@ -10,7 +10,7 @@ class cola_predictor:
         # keep the model in evaluation mode
         self.model.eval()
         self.model.freeze()
-        self.processor = ColaDataModule()
+        self.processor = data_module()
         self.softmax = torch.nn.Softmax(dim=0)
         self.labels = ["unacceptable", "acceptable"]
     
