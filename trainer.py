@@ -33,6 +33,3 @@ def main():
     )
 
     cola_trainer.fit(cola_model, cola_data)
-
-if __name__=="__main__":
-    main()
