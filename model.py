@@ -87,7 +87,7 @@ class ColaModel(L.LightningModule):
         self.precision_micro_metric = torchmetrics.Precision(task="binary", average="micro")
         self.recall_micro_metric = torchmetrics.Recall(task="binary", average="micro")
 
-    def forward(self, input_ids: Tensor, attention_mask: Tensor, labels: Optional[Tensor] = None) -> Dict[str, Any]:
+wdef forward(self, input_ids: Tensor, attention_mask: Tensor, labels: Optional[Tensor] = None) -> Dict[str, Any]:
         """
         Forward pass of the model.
         
@@ -105,10 +105,10 @@ class ColaModel(L.LightningModule):
         """
         if not isinstance(input_ids, Tensor) or not isinstance(attention_mask, Tensor):
             raise ValueError("input_ids and attention_mask must be torch.Tensor")
-        
+
         if labels is not None and not isinstance(labels, Tensor):
             raise ValueError("labels must be torch.Tensor if provided")
-        
+
         try:
             outputs = self.bert(
                 input_ids=input_ids, attention_mask=attention_mask, labels=labels
@@ -140,10 +140,10 @@ class ColaModel(L.LightningModule):
             )
             preds = torch.argmax(outputs.logits, 1)
             train_acc = self.train_accuracy_metric(preds, batch["label"])
-            
+
             self.log("train/loss", outputs.loss, prog_bar=True, on_epoch=True)
             self.log("train/acc", train_acc, prog_bar=True, on_epoch=True)
-            
+
             return outputs.loss
         except Exception as e:
             raise RuntimeError(f"Training step failed: {str(e)}")
@@ -189,7 +189,7 @@ class ColaModel(L.LightningModule):
             self.log("valid/precision_micro", precision_micro, prog_bar=True, on_epoch=True)
             self.log("valid/recall_micro", recall_micro, prog_bar=True, on_epoch=True)
             self.log("valid/f1", f1, prog_bar=True, on_epoch=True)
-            
+
             return {"labels": labels, "logits": outputs.logits}
         except Exception as e:
             raise RuntimeError(f"Validation step failed: {str(e)}")
@@ -209,11 +209,11 @@ class ColaModel(L.LightningModule):
         try:
             labels = torch.cat([x["labels"] for x in outputs])
             logits = torch.cat([x["logits"] for x in outputs])
-            
+
             # Move tensors to CPU for numpy conversion
             labels = labels.cpu()
             logits = logits.cpu()
-            
+
             # Log confusion matrix using W&B
             self.logger.experiment.log(
                 {
