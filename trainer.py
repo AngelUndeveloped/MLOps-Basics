@@ -76,7 +76,8 @@ class SampleVisualizationLogger(L.Callback):
         )
 
 
-def main():
+@hydra.main(config_path="./config", config_name="config.yaml")
+def main(cfg):
     """
     Main training function for the CoLA model.
     
@@ -92,9 +93,14 @@ def main():
     - Logging of misclassified examples
     - Anomaly detection for debugging
     """
+    # print(OmegaConf.to_yaml(cfg))
     # Initialize data and model
-    cola_data = DataModule()
-    cola_model = ColaModel()  # Fixed incorrect model instantiation
+    cola_data = DataModule(
+        cfg.model.tokenizer,
+        cfg.processing.batch_size,
+        cfg.processing.max_length
+    )
+    cola_model = ColaModel(cfg.model.name)  # Fixed incorrect model instantiation
 
     # Configure checkpoint callback
     checkpoint_callback = ModelCheckpoint(
@@ -120,17 +126,17 @@ def main():
 
     # Create trainer with callbacks and configuration
     cola_trainer = L.Trainer(
-        max_epochs=1,
+        max_epochs=cfg.training.max_epochs,
         logger=wandb_logger,
         callbacks=[
             checkpoint_callback,
             early_stopping_callback,
             SampleVisualizationLogger(cola_data)
         ],
-        log_every_n_steps=10,
-        detect_anomaly=True,
-        # limit_train_batches=0.25,  # Uncomment to limit training data
-        # limit_val_batches=0.25,   # Uncomment to limit validation data
+        log_every_n_steps=cfg.training.log_every_n_steps,
+        deterministic=cfg.training.deterministic,
+        limit_train_batches=cfg.training.limit_train_batches,
+        limit_val_batches=cfg.training.limit_val_batches,
     )
 
     # Start training
