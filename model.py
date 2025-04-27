@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-class cola_model(L.LightningModule):
+class ColaModel(L.LightningModule):
     """
     A PyTorch Lightning model for the CoLA (Corpus of Linguistic Acceptability) task.
     This model uses a pre-trained BERT model as a base and adds a classification head
@@ -39,7 +39,7 @@ class cola_model(L.LightningModule):
             lr (float, optional): Learning rate for model training. Defaults to 2e-5,
                 which is a common learning rate for fine-tuning transformer models.
         """
-        super(cola_model, self).__init__()
+        super(ColaModel, self).__init__()
         self.save_hyperparameters()
         self.bert = AutoModel.from_pretrained(model_name)
         self.w = nn.Linear(self.bert.config.hidden_size, 2)

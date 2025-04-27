@@ -20,4 +20,4 @@ dill==0.3.8
 multiprocess==0.70.16
 xxhash==3.5.0
 pyarrow==19.0.1
-safetensors==0.5.3 
+safetensors==0.5.3
