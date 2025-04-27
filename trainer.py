@@ -15,9 +15,10 @@ import torch
 import wandb
 import pandas as pd
 import lightning as L
-from lightning.callbacks import ModelCheckpoint
-from lightning.callbacks.early_stopping import EarlyStopping
-from lightning.loggers import WandbLogger
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.loggers import WandbLogger
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
 from data import DataModule
 from model import ColaModel
@@ -76,8 +77,8 @@ class SampleVisualizationLogger(L.Callback):
         )
 
 
-@hydra.main(config_path="./config", config_name="config.yaml")
-def main(cfg):
+@hydra.main(config_path="./config", config_name="config.yaml", version_base=None)
+def main(cfg: DictConfig):
     """
     Main training function for the CoLA model.
     
@@ -93,14 +94,18 @@ def main(cfg):
     - Logging of misclassified examples
     - Anomaly detection for debugging
     """
-    # print(OmegaConf.to_yaml(cfg))
+    print(OmegaConf.to_yaml(cfg))
+
     # Initialize data and model
     cola_data = DataModule(
-        cfg.model.tokenizer,
-        cfg.processing.batch_size,
-        cfg.processing.max_length
+        model_name=cfg.model.name,
+        batch_size=cfg.processing.batch_size,
+        max_length=cfg.processing.max_length,
     )
-    cola_model = ColaModel(cfg.model.name)  # Fixed incorrect model instantiation
+    cola_model = ColaModel(
+        model_name=cfg.model.name,
+        learning_rate=cfg.model.learning_rate
+    )
 
     # Configure checkpoint callback
     checkpoint_callback = ModelCheckpoint(

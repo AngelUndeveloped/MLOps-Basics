@@ -16,6 +16,7 @@ Attributes:
     model_name (str): Name of the pre-trained model to use for tokenization.
         Defaults to "google/bert_uncased_L-2_H-128_A-2".
     batch_size (int): Number of samples per batch. Defaults to 32.
+    max_length (int): Maximum sequence length for tokenization. Defaults to 128.
 """
 
 import torch
@@ -42,12 +43,14 @@ class DataModule(L.LightningDataModule):
         model_name (str): Name of the pre-trained model to use for tokenization.
             Defaults to "google/bert_uncased_L-2_H-128_A-2".
         batch_size (int): Number of samples per batch. Defaults to 32.
+        max_length (int): Maximum sequence length for tokenization. Defaults to 128.
 
     Attributes:
         tokenizer (AutoTokenizer): The tokenizer instance for text preprocessing.
         train_data (Dataset): The training dataset.
         val_data (Dataset): The validation dataset.
         batch_size (int): Number of samples per batch.
+        max_length (int): Maximum sequence length for tokenization.
 
     Methods:
         prepare_data: Downloads and prepares the dataset.
@@ -56,7 +59,12 @@ class DataModule(L.LightningDataModule):
         train_dataloader: Returns the training dataloader.
         val_dataloader: Returns the validation dataloader.
     """
-    def __init__(self, model_name: str = "google/bert_uncased_L-2_H-128_A-2", batch_size: int = 32):
+    def __init__(
+            self,
+            model_name: str = "google/bert_uncased_L-2_H-128_A-2",
+            batch_size: int = 32,
+            max_length: int = 128
+        ):
         """
         Initialize the DataModule.
 
@@ -64,6 +72,7 @@ class DataModule(L.LightningDataModule):
             model_name (str): Name of the pre-trained model to use for tokenization.
                 Defaults to "google/bert_uncased_L-2_H-128_A-2".
             batch_size (int): Number of samples per batch. Defaults to 32.
+            max_length (int): Maximum sequence length for tokenization. Defaults to 128.
 
         Note:
             The tokenizer is initialized during __init__ to ensure it's available
@@ -71,6 +80,7 @@ class DataModule(L.LightningDataModule):
         """
         super().__init__()
         self.batch_size = batch_size
+        self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
         self.train_data = None
@@ -108,14 +118,14 @@ class DataModule(L.LightningDataModule):
                 - Other tokenizer outputs as specified by the tokenizer
 
         Note:
-            The tokenization uses a maximum sequence length of 256 tokens.
+            The tokenization uses the max_length parameter specified during initialization.
             Longer sequences will be truncated, and shorter ones will be padded.
         """
         return self.tokenizer(
             example["sentence"],
             truncation=True,
             padding="max_length",
-            max_length=256,
+            max_length=self.max_length,
         )
 
     def setup(self, stage=None):

@@ -19,6 +19,8 @@ import torchmetrics
 # from sklearn.metrics import confusion_matrix
 # import matplotlib.pyplot as plt
 # import seaborn as sns
+from typing import Dict, List, Optional, Union, Any
+from torch import Tensor
 
 
 class ColaModel(L.LightningModule):
@@ -44,14 +46,14 @@ class ColaModel(L.LightningModule):
         num_classes (int): Number of output classes (2 for binary classification)
         train_accuracy_metric (torchmetrics.Accuracy): Training accuracy metric
         val_accuracy_metric (torchmetrics.Accuracy): Validation accuracy metric
-        f1_metric (torchmetrics.F1): F1 score metric
+        f1_metric (torchmetrics.F1Score): F1 score metric
         precision_macro_metric (torchmetrics.Precision): Macro-averaged precision
         recall_macro_metric (torchmetrics.Recall): Macro-averaged recall
         precision_micro_metric (torchmetrics.Precision): Micro-averaged precision
         recall_micro_metric (torchmetrics.Recall): Micro-averaged recall
     """
-    
-    def __init__(self, model_name="google/bert_uncased_L-2_H-128_A-2", lr=3e-5):
+
+    def __init__(self, model_name: str = "google/bert_uncased_L-2_H-128_A-2", lr: float = 3e-5):
         """
         Initialize the CoLA model.
         
@@ -67,156 +69,163 @@ class ColaModel(L.LightningModule):
         super(ColaModel, self).__init__()
         self.save_hyperparameters()
 
-        self.bert = AutoModelForSequenceClassification.from_pretrained(
-            model_name=model_name,
-            num_labels=2,
-        )
-        self.num_classes = 2
-        self.train_accuracy_metric = torchmetrics.Accuracy()
-        self.val_accuracy_metric = torchmetrics.Accuracy()
-        self.f1_metric = torchmetrics.F1(num_classes=self.num_classes)
-        self.precision_macro_metric = torchmetrics.Precision(
-            average="macro",
-            num_classes=self.num_classes,
-        )
-        self.recall_macro_metric = torchmetrics.Recall(
-            average="macro",
-            num_classes=self.num_classes,
-        )
-        self.precision_micro_metric = torchmetrics.Precision(average="micro")
-        self.recall_micro_metric = torchmetrics.Recall(average="micro")
+        try:
+            self.bert = AutoModelForSequenceClassification.from_pretrained(
+                model_name, num_labels=2
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to load pre-trained model {model_name}: {str(e)}")
 
-    def forward(self, input_ids, attention_mask, labels=None):
+        self.num_classes = 2
+        
+        # Initialize metrics with proper task specification
+        self.train_accuracy_metric = torchmetrics.Accuracy(task="binary")
+        self.val_accuracy_metric = torchmetrics.Accuracy(task="binary")
+        self.f1_metric = torchmetrics.F1Score(task="binary")
+        self.precision_macro_metric = torchmetrics.Precision(task="binary", average="macro")
+        self.recall_macro_metric = torchmetrics.Recall(task="binary", average="macro")
+        self.precision_micro_metric = torchmetrics.Precision(task="binary", average="micro")
+        self.recall_micro_metric = torchmetrics.Recall(task="binary", average="micro")
+
+    def forward(self, input_ids: Tensor, attention_mask: Tensor, labels: Optional[Tensor] = None) -> Dict[str, Any]:
         """
         Forward pass of the model.
         
         Args:
-            input_ids (torch.Tensor): Tokenized input sequence
-            attention_mask (torch.Tensor): Attention mask for the input sequence
-            labels (torch.Tensor, optional): Ground truth labels for training.
+            input_ids (Tensor): Tokenized input sequence
+            attention_mask (Tensor): Attention mask for the input sequence
+            labels (Tensor, optional): Ground truth labels for training.
                 Defaults to None.
         
         Returns:
-            transformers.modeling_outputs.SequenceClassifierOutput: Model outputs
-                containing logits and loss (if labels are provided)
+            Dict[str, Any]: Model outputs containing logits and loss (if labels are provided)
+        
+        Raises:
+            ValueError: If input tensors have incorrect shapes or types
         """
-        outputs = self.bert(
-            input_ids=input_ids, attention_mask=attention_mask, labels=labels
-        )
-        return outputs
+        if not isinstance(input_ids, Tensor) or not isinstance(attention_mask, Tensor):
+            raise ValueError("input_ids and attention_mask must be torch.Tensor")
+        
+        if labels is not None and not isinstance(labels, Tensor):
+            raise ValueError("labels must be torch.Tensor if provided")
+        
+        try:
+            outputs = self.bert(
+                input_ids=input_ids, attention_mask=attention_mask, labels=labels
+            )
+            return outputs
+        except Exception as e:
+            raise RuntimeError(f"Forward pass failed: {str(e)}")
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Tensor:
         """
         Training step for the model.
         
         Args:
-            batch (dict): A batch of training data containing:
+            batch (Dict[str, Tensor]): A batch of training data containing:
                 - input_ids: Tokenized input sequences
                 - attention_mask: Attention masks
                 - label: Ground truth labels
             batch_idx (int): Index of the current batch
         
         Returns:
-            torch.Tensor: Training loss for the current batch
+            Tensor: Training loss for the current batch
         
         Note:
             Logs training loss and accuracy to the logger.
         """
-        outputs = self.forward(
-            batch["input_ids"], batch["attention_mask"], labels=batch["label"]
-        )
-        preds = torch.argmax(outputs.logits, 1)
-        train_acc = self.train_accuracy_metric(preds, batch["label"])
-        self.log("train/loss", outputs.loss, prog_bar=True, on_epoch=True)
-        self.log("train/acc", train_acc, prog_bar=True, on_epoch=True)
-        return outputs.loss
+        try:
+            outputs = self.forward(
+                batch["input_ids"], batch["attention_mask"], labels=batch["label"]
+            )
+            preds = torch.argmax(outputs.logits, 1)
+            train_acc = self.train_accuracy_metric(preds, batch["label"])
+            
+            self.log("train/loss", outputs.loss, prog_bar=True, on_epoch=True)
+            self.log("train/acc", train_acc, prog_bar=True, on_epoch=True)
+            
+            return outputs.loss
+        except Exception as e:
+            raise RuntimeError(f"Training step failed: {str(e)}")
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:
         """
         Validation step for the model.
         
         Args:
-            batch (dict): A batch of validation data containing:
+            batch (Dict[str, Tensor]): A batch of validation data containing:
                 - input_ids: Tokenized input sequences
                 - attention_mask: Attention masks
                 - label: Ground truth labels
             batch_idx (int): Index of the current batch
         
         Returns:
-            dict: Dictionary containing labels and logits for the current batch
+            Dict[str, Tensor]: Dictionary containing labels and logits for the current batch
         
         Note:
             Logs various validation metrics including loss, accuracy, precision,
             recall, and F1 score to the logger.
         """
-        labels = batch["label"]
-        outputs = self.forward(
-            batch["input_ids"], batch["attention_mask"], labels=batch["label"]
-        )
-        preds = torch.argmax(outputs.logits, 1)
+        try:
+            labels = batch["label"]
+            outputs = self.forward(
+                batch["input_ids"], batch["attention_mask"], labels=labels
+            )
+            preds = torch.argmax(outputs.logits, 1)
 
-        # Metrics
-        valid_acc = self.val_accuracy_metric(preds, labels)
-        precision_macro = self.precision_macro_metric(preds, labels)
-        recall_macro = self.recall_macro_metric(preds, labels)
-        precision_micro = self.precision_micro_metric(preds, labels)
-        recall_micro = self.recall_micro_metric(preds, labels)
-        f1 = self.f1_metric(preds, labels)
+            # Compute metrics
+            valid_acc = self.val_accuracy_metric(preds, labels)
+            precision_macro = self.precision_macro_metric(preds, labels)
+            recall_macro = self.recall_macro_metric(preds, labels)
+            precision_micro = self.precision_micro_metric(preds, labels)
+            recall_micro = self.recall_micro_metric(preds, labels)
+            f1 = self.f1_metric(preds, labels)
 
-        # Logging metrics
-        self.log("valid/loss", outputs.loss, prog_bar=True, on_step=True)
-        self.log("valid/acc", valid_acc, prog_bar=True, on_epoch=True)
-        self.log("valid/precision_macro", precision_macro, prog_bar=True, on_epoch=True)
-        self.log("valid/recall_macro", recall_macro, prog_bar=True, on_epoch=True)
-        self.log("valid/precision_micro", precision_micro, prog_bar=True, on_epoch=True)
-        self.log("valid/recall_micro", recall_micro, prog_bar=True, on_epoch=True)
-        self.log("valid/f1", f1, prog_bar=True, on_epoch=True)
-        return {"labels": labels, "logits": outputs.logits}
+            # Log metrics
+            self.log("valid/loss", outputs.loss, prog_bar=True, on_epoch=True)
+            self.log("valid/acc", valid_acc, prog_bar=True, on_epoch=True)
+            self.log("valid/precision_macro", precision_macro, prog_bar=True, on_epoch=True)
+            self.log("valid/recall_macro", recall_macro, prog_bar=True, on_epoch=True)
+            self.log("valid/precision_micro", precision_micro, prog_bar=True, on_epoch=True)
+            self.log("valid/recall_micro", recall_micro, prog_bar=True, on_epoch=True)
+            self.log("valid/f1", f1, prog_bar=True, on_epoch=True)
+            
+            return {"labels": labels, "logits": outputs.logits}
+        except Exception as e:
+            raise RuntimeError(f"Validation step failed: {str(e)}")
 
-    def validation_epoch_end(self, outputs):
+    def validation_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> None:
         """
         Called at the end of a validation epoch.
         
         Args:
-            outputs (list): List of outputs from validation_step
+            outputs (List[Dict[str, Tensor]]): List of outputs from validation_step
         
         Note:
             Logs a confusion matrix to Weights & Biases for visualization.
             The confusion matrix is computed using the model's predictions
             and ground truth labels from the entire validation set.
         """
-        labels = torch.cat([x["labels"] for x in outputs])
-        logits = torch.cat([x["logits"] for x in outputs])
-        preds = torch.argmax(logits, 1)
+        try:
+            labels = torch.cat([x["labels"] for x in outputs])
+            logits = torch.cat([x["logits"] for x in outputs])
+            
+            # Move tensors to CPU for numpy conversion
+            labels = labels.cpu()
+            logits = logits.cpu()
+            
+            # Log confusion matrix using W&B
+            self.logger.experiment.log(
+                {
+                    "conf": wandb.plot.confusion_matrix(
+                        probs=logits.numpy(), y_true=labels.numpy()
+                    )
+                }
+            )
+        except Exception as e:
+            raise RuntimeError(f"Validation epoch end failed: {str(e)}")
 
-        # Log confusion matrix using W&B
-        self.logger.experiment.log(
-            {
-                "conf": wandb.plot.confusion_matrix(
-                    probs=logits.numpy(), y_true=labels.numpy()
-                )
-            }
-        )
-
-        # 2. Confusion Matrix plotting using scikit-learn method
-        # wandb.log({"cm": wandb.sklearn.plot_confusion_matrix(labels.numpy(), preds)})
-
-        # 3. Confusion Matric plotting using Seaborn
-        # data = confusion_matrix(labels.numpy(), preds.numpy())
-        # df_cm = pd.DataFrame(data, columns=np.unique(labels), index=np.unique(labels))
-        # df_cm.index.name = "Actual"
-        # df_cm.columns.name = "Predicted"
-        # plt.figure(figsize=(7, 4))
-        # plot = sns.heatmap(
-        #     df_cm, cmap="Blues", annot=True, annot_kws={"size": 16}
-        # )  # font size
-        # self.logger.experiment.log({"Confusion Matrix": wandb.Image(plot)})
-
-        # self.logger.experiment.log(
-        #     {"roc": wandb.plot.roc_curve(labels.numpy(), logits.numpy())}
-        # )
-
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> torch.optim.Optimizer:
         """
         Configure the optimizer for model training.
         
