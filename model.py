@@ -1,6 +1,7 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import wandb
+import numpy as np
+import pandas as pd
 import lightning as L
 from transformers import AutoModelForSequenceClassification
 import torchmetrics
@@ -37,26 +38,30 @@ class ColaModel(L.LightningModule):
             model_name (str, optional): Name of the pre-trained BERT model to use.
                 Defaults to a small BERT model ("google/bert_uncased_L-2_H-128_A-2").
             lr (float, optional): Learning rate for model training. Defaults to 2e-5,
-                which is a common learning rate for fine-tuning transformer models.
         """
         super(ColaModel, self).__init__()
         self.save_hyperparameters()
-        self.bert = AutoModel.from_pretrained(model_name)
-        self.w = nn.Linear(self.bert.config.hidden_size, 2)
+
+        self.bert = AutoModelForSequenceClassification.from_pretrained(
+            model_name=model_name,
+            num_labels=2,
+        )
         self.num_classes = 2
         self.train_accuracy_metric = torchmetrics.Accuracy()
         self.val_accuracy_metric = torchmetrics.Accuracy()
         self.f1_metric = torchmetrics.F1(num_classes=self.num_classes)
         self.precision_macro_metric = torchmetrics.Precision(
-            average="macro", num_classes=self.num_classes
+            average="macro",
+            num_classes=self.num_classes,
         )
         self.recall_macro_metric = torchmetrics.Recall(
-            average="macro", num_classes=self.num_classes
+            average="macro",
+            num_classes=self.num_classes,
         )
         self.precision_micro_metric = torchmetrics.Precision(average="micro")
         self.recall_micro_metric = torchmetrics.Recall(average="micro")
 
-    def forward(self, input_ids, attention_mask):
+    def forward(self, input_ids, attention_mask, labels=None):
         """
         Forward pass of the model.
         
@@ -68,7 +73,11 @@ class ColaModel(L.LightningModule):
             torch.Tensor: Raw logits for the two classes (acceptable/not acceptable)
         """
         # Process input through BERT
-        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        outputs = self.bert(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels
+        )
         
         # Extract the [CLS] token representation (first token) for classification
         # [CLS] token is designed to capture the meaning of the entire sentence
